@@ -1,5 +1,5 @@
 # keplerspline
-Wrapper to fit a basis spline to 1d data with outlier rejection. The spline code itself is from the SDSS IDL utils library. 
+Wrapper to fit a basis spline to 1d data with outlier rejection. The spline code itself is from the SDSS IDL utils library (http://www.sdss3.org/dr9/software/idlutils_doc.php). 
 
 Usage: 
 
