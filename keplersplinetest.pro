@@ -1,4 +1,4 @@
-function keplerspline2, t, f, ndays=ndays, maxiter = maxiter, rms = rms, yplot = yplot, goodout = goodout
+function keplerspline2test, t, f, ndays=ndays, maxiter = maxiter, rms = rms, yplot = yplot, goodout = goodout, thisincludeinds = thisincludeinds
 
 
 
@@ -6,6 +6,7 @@ function keplerspline2, t, f, ndays=ndays, maxiter = maxiter, rms = rms, yplot =
   bksp = ndays / (max(t) - min(t))
   
   lastgood = findgen(n_elements(t2))
+  if n_elements(thisincludeinds) ne 0 then lastgood = thisincludeinds
   
   for i = 0, maxiter do begin
   
@@ -23,6 +24,9 @@ function keplerspline2, t, f, ndays=ndays, maxiter = maxiter, rms = rms, yplot =
     ;    endif
     
     junk = robust_mean(f - bg, 3, goodind = good)
+    
+    
+    good = cgsetintersection(good, thisincludeinds)
     if n_elements(good) gt 1 then rms = stdev(bg(good) - f(good))
     if keyword_set(yplot) then begin
     
@@ -56,13 +60,14 @@ function keplerspline2, t, f, ndays=ndays, maxiter = maxiter, rms = rms, yplot =
   return, bg
   
 end
-function keplerspline, t, f, ndays=ndays, maxiter = maxiter, rms = rms, yplot = yplot, breakp = breakp, goodind = goodind, bpndays = bpndays
-
-
-
+function keplersplinetest, t, f, ndays=ndays, maxiter = maxiter, rms = rms, yplot = yplot, $
+  breakp = breakp, goodind = goodind, bpndays = bpndays, includeinds = includeinds
+  
+  
+  if 1 - keyword_set(includeinds) then includeinds = lindgen(n_elements(t))
   if 1 - keyword_set(ndays) then ndays = 1.5
   if 1 - keyword_set(bpndays) then bpndays = ndays
-
+  
   if n_elements(maxiter) eq 0 then maxiter = 5
   gaps = where(diff(t) gt bpndays)
   if keyword_set(breakp) then begin
@@ -73,7 +78,7 @@ function keplerspline, t, f, ndays=ndays, maxiter = maxiter, rms = rms, yplot = 
     endif
   endif
   if gaps[0] eq -1 then begin
-    s = keplerspline2(t, f, ndays = ndays, maxiter = maxiter, yplot=yplot, good = good) ; make sure we separate the continuum normalizations between gaps in data
+    s = keplerspline2test(t, f, ndays = ndays, maxiter = maxiter, yplot=yplot, good = good, thisincludeinds=includeinds) ; make sure we separate the continuum normalizations between gaps in data
     goodind = good
   endif
   if gaps[0] gt -1 then begin
@@ -82,7 +87,9 @@ function keplerspline, t, f, ndays=ndays, maxiter = maxiter, rms = rms, yplot = 
     gaps = [0,gaps,n_elements(t)]
     for i =1, n_elements(gaps)-1 do begin
       ;print, max(diff(k.t[gaps[i-1]:gaps[i]-1]))
-      s[gaps[i-1]:gaps[i]-1] = keplerspline2(t[gaps[i-1]:gaps[i]-1], f[gaps[i-1]:gaps[i]-1], ndays = ndays, maxiter = maxiter,yplot=yplot, good = good)
+      thisii = includeinds[where(includeinds ge gaps[i-1] and includeinds le gaps[i]-1)] - gaps[i-1]
+      s[gaps[i-1]:gaps[i]-1] = keplerspline2test(t[gaps[i-1]:gaps[i]-1], f[gaps[i-1]:gaps[i]-1], ndays = ndays,$
+         maxiter = maxiter,yplot=yplot, good = good, thisincludeinds = thisii)
       goodind = [goodind, good + gaps[i-1]]
     endfor
   end
