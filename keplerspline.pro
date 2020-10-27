@@ -4,35 +4,35 @@ function keplerspline2, t, f, ndays=ndays, maxiter = maxiter, rms = rms, yplot =
 
   t2 = (t - min(t)) / (max(t) - min(t))
   bksp = ndays / (max(t) - min(t))
-  
+
   lastgood = findgen(n_elements(t2))
-  
+
   for i = 0, maxiter do begin
-  
-  
+
+
     thist = t2(lastgood)
     thisf = f(lastgood)
-    
+
     sset = bspline_iterfit(thist,thisf,nord=4,maxiter=0,bkspace=bksp)
-    
+
     bg = bspline_valu(t2,sset)
-    
+
     ;    if total(1 - finite(bg)) gt 0 then begin
     ;      stop
     ;      return, dblarr(n_elements(bg)) + 1d
     ;    endif
-    
+
     junk = robust_mean(f - bg, 3, goodind = good)
     if n_elements(good) gt 1 then rms = stdev(bg(good) - f(good))
     if keyword_set(yplot) then begin
-    
+
       if i le yplot then begin
         small = 0.7
         large = 1
         title = 'Iteration '+ trim(i + 1, 1)
         if i eq 0 then title = 'EPIC 60019950: Iteration '+ trim(i + 1, 1)
         if i eq 2 then xtitle = 'BJD - 2454833'
-        
+
         plot, t, f, ps=8, /ynozero,/nodata, title = title,ytitle = 'Relative Flux', xtitle = xtitle
         oplot, t, f, ps=8, symsize = large
         oplot, t, f, ps=8, symsize = small, color = cgcolor('red')
@@ -47,24 +47,54 @@ function keplerspline2, t, f, ndays=ndays, maxiter = maxiter, rms = rms, yplot =
         break
       endif
     end
-    
-    
+
+
     lastgood = good
-    
+
   end
   goodout = good
   return, bg
-  
+
 end
-function keplerspline, t, f, ndays=ndays, maxiter = maxiter, rms = rms, yplot = yplot, breakp = breakp, goodind = goodind, bpndays = bpndays
+function keplerspline, tin, fin, ndays=ndays, maxiter = maxiter, rms = rms, yplot = yplot, breakpin = breakpin, goodind = goodind, bpndays = bpndays
+
+  t = tin
+  f = fin
+  difft = diff(t)
+  resort = 0
+  if keyword_set(breakpin) then breakp = breakpin
+  if total(difft lt 0) ne 0 then begin
+
+    ;print, 'FIX ME!!!'
+    ;print, 'The time array is not sorted. Keplerspline will break. '
+
+    resort = 1; so that later in the end we can check
+    sor = sort(t)
+    t = t[sor]
+    f=f[sor]
+    if n_elements(breakp) gt 0 then begin
+      newbreakp = indgen(n_elements(breakp))
+      for i = 0, n_elements(breakp)-1 do begin
+        x = where(sor eq breakp[i])
+        if x[0] ne -1 then newbreakp[i] = x[0]
+      endfor
+      breakp = newbreakp
+    end
 
 
+    difft = diff(t)
+
+
+  endif
 
   if 1 - keyword_set(ndays) then ndays = 1.5
   if 1 - keyword_set(bpndays) then bpndays = ndays
 
   if n_elements(maxiter) eq 0 then maxiter = 5
-  gaps = where(diff(t) gt bpndays)
+
+
+
+  gaps = where(difft gt bpndays)
   if keyword_set(breakp) then begin
     if gaps[0] eq -1 then gaps = [breakp]
     if gaps[0] gt -1 then begin
@@ -86,9 +116,20 @@ function keplerspline, t, f, ndays=ndays, maxiter = maxiter, rms = rms, yplot = 
       goodind = [goodind, good + gaps[i-1]]
     endfor
   end
-  
+
   rms = stdev(s(goodind) - f(goodind))
-  
+
+  if resort then begin
+    
+    ssor = sort(sor)
+    s = s[ssor]
+    ;print, 'Fix Goodinds!'
+    isgoodinds = intarr(n_elements(t))
+    isgoodinds[goodind] = 1
+    isgoodinds = isgoodinds[ssor]
+    goodind = where(isgoodinds)
+    
+  endif
   return, s
 end
 
