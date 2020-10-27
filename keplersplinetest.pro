@@ -25,7 +25,6 @@ function keplerspline2test, t, f, ndays=ndays, maxiter = maxiter, rms = rms, ypl
     
     junk = robust_mean(f - bg, 3, goodind = good)
     
-    
     good = cgsetintersection(good, thisincludeinds)
     if n_elements(good) gt 1 then rms = stdev(bg(good) - f(good))
     if keyword_set(yplot) then begin
@@ -60,16 +59,55 @@ function keplerspline2test, t, f, ndays=ndays, maxiter = maxiter, rms = rms, ypl
   return, bg
   
 end
-function keplersplinetest, t, f, ndays=ndays, maxiter = maxiter, rms = rms, yplot = yplot, $
-  breakp = breakp, goodind = goodind, bpndays = bpndays, includeinds = includeinds
+function keplersplinetest, tin, fin, ndays=ndays, maxiter = maxiter, rms = rms, yplot = yplot, $
+  breakpin = breakpin, goodind = goodind, bpndays = bpndays, includeindsin = includeindsin
   
   
-  if 1 - keyword_set(includeinds) then includeinds = lindgen(n_elements(t))
+  t = tin
+  f = fin
+  difft = diff(t)
+  resort = 0
+  if keyword_set(breakpin) then breakp = breakpin
+  
+  if keyword_set(includeindsin) then includeinds = includeindsin
+  if 1 - keyword_set(includeindsin) then includeinds = lindgen(n_elements(t))
   if 1 - keyword_set(ndays) then ndays = 1.5
   if 1 - keyword_set(bpndays) then bpndays = ndays
   
+  if total(difft lt 0) ne 0 then begin
+
+    ;print, 'FIX ME!!!'
+    ;print, 'The time array is not sorted. Keplerspline will break. '
+
+    resort = 1; so that later in the end we can check
+    sor = sort(t)
+    t = t[sor]
+    f=f[sor]
+    if n_elements(breakp) gt 0 then begin
+      newbreakp = indgen(n_elements(breakp))
+      for i = 0, n_elements(breakp)-1 do begin
+        x = where(sor eq breakp[i])
+        if x[0] ne -1 then newbreakp[i] = x[0]
+      endfor
+      breakp = newbreakp
+    end
+    
+    ; do includeinds here too
+    
+    isincluded = intarr(n_elements(t))
+    isincluded[includeinds] = 1
+    isincluded = isincluded[sor]
+    includeinds = where(isincluded)
+
+
+    difft = diff(t)
+    
+
+
+  endif
+  
   if n_elements(maxiter) eq 0 then maxiter = 5
-  gaps = where(diff(t) gt bpndays)
+  gaps = where(difft gt bpndays)
   if keyword_set(breakp) then begin
     if gaps[0] eq -1 then gaps = [breakp]
     if gaps[0] gt -1 then begin
@@ -95,6 +133,18 @@ function keplersplinetest, t, f, ndays=ndays, maxiter = maxiter, rms = rms, yplo
   end
   
   rms = stdev(s(goodind) - f(goodind))
+  
+  if resort then begin
+
+    ssor = sort(sor)
+    s = s[ssor]
+    ;print, 'Fix Goodinds!'
+    isgoodinds = intarr(n_elements(t))
+    isgoodinds[goodind] = 1
+    isgoodinds = isgoodinds[ssor]
+    goodind = where(isgoodinds)
+
+  endif
   
   return, s
 end
